@@ -40,14 +40,13 @@ BreachType classifyTemperatureBreach(CoolingType coolingType, double temperature
     return inferBreach(temperatureInC, limits.lowerLimit, limits.upperLimit);
 }
 
-// Delegate alert sending to specific functions to reduce complexity
-typedef void (*AlertFunction)(BreachType breachType);
-
+// Static function to send alerts to controller
 static void sendToController(BreachType breachType) {
     const unsigned short header = 0xfeed;
     printf("%x : %x\n", header, breachType);
 }
 
+// Static function to send alerts via email
 static void sendToEmail(BreachType breachType) {
     const char* recipient = "a.b@c.com";
     if (breachType != NORMAL) {
@@ -56,16 +55,12 @@ static void sendToEmail(BreachType breachType) {
     }
 }
 
-static AlertFunction getAlertFunction(AlertTarget alertTarget) {
-    if (alertTarget == TO_CONTROLLER) {
-        return sendToController;
-    } else {
-        return sendToEmail;
-    }
-}
-
 void checkAndAlert(AlertTarget alertTarget, BatteryCharacter batteryChar, double temperatureInC) {
     BreachType breachType = classifyTemperatureBreach(batteryChar.coolingType, temperatureInC);
-    AlertFunction alertFunc = getAlertFunction(alertTarget);
-    alertFunc(breachType);
+
+    if (alertTarget == TO_CONTROLLER) {
+        sendToController(breachType);
+    } else {
+        sendToEmail(breachType);
+    }
 }
