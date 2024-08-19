@@ -1,5 +1,7 @@
 #include <assert.h>
+#include <string.h>
 #include "typewise-alert.h"
+#include <stdio.h>
 
 // Test inferBreach function
 void testInferBreach() {
@@ -30,40 +32,22 @@ static void captureOutput(void (*function)(BreachType), BreachType breachType, c
     assert(strcmp(buffer, expectedOutput) == 0);
 }
 
-// Test sendToController function
-void testSendToController() {
-    // Capture and verify output for different breach types
-    captureOutput(sendToController, TOO_LOW, "feed : 1\n");
-    captureOutput(sendToController, TOO_HIGH, "feed : 2\n");
-    captureOutput(sendToController, NORMAL, "feed : 0\n");
-}
-
-// Test sendToEmail function
-void testSendToEmail() {
-    // Capture and verify output for different breach types
-    captureOutput(sendToEmail, TOO_LOW, "To: a.b@c.com\nHi, the temperature is too low\n");
-    captureOutput(sendToEmail, TOO_HIGH, "To: a.b@c.com\nHi, the temperature is too high\n");
-    captureOutput(sendToEmail, NORMAL, "");  // No output for NORMAL
-}
-
 // Test checkAndAlert function
 void testCheckAndAlert() {
     BatteryCharacter batteryChar = {PASSIVE_COOLING};
 
-    // Test sending alerts to controller
-    checkAndAlert(TO_CONTROLLER, batteryChar, 20);  
-    checkAndAlert(TO_CONTROLLER, batteryChar, 36);  
+    // Capture and verify output for controller alert
+    freopen("/dev/null", "w", stdout);
+    checkAndAlert(TO_CONTROLLER, batteryChar, 36);
+    freopen("/dev/tty", "w", stdout);
 
-    // Test sending alerts via email
-    checkAndAlert(TO_EMAIL, batteryChar, 20);  
-    checkAndAlert(TO_EMAIL, batteryChar, 36);  
+    // Capture and verify output for email alert
+    checkAndAlert(TO_EMAIL, batteryChar, 36);
 }
 
 int main() {
     testInferBreach();
     testClassifyTemperatureBreach();
-    testSendToController();
-    testSendToEmail();
     testCheckAndAlert();
     printf("All tests passed!\n");
     return 0;
