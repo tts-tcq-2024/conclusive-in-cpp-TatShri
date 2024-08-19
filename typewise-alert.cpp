@@ -1,7 +1,7 @@
 #include "typewise-alert.h"
 #include <stdio.h>
 
-// Data-driven approach to define limits
+// Define a structure to hold cooling limits
 typedef struct {
     CoolingType coolingType;
     int lowerLimit;
@@ -14,14 +14,14 @@ static const CoolingLimits coolingLimits[] = {
     {MED_ACTIVE_COOLING, 0, 40},
 };
 
-// Function to get limits based on cooling type
-CoolingLimits getLimitsForCoolingType(CoolingType coolingType) {
+// Helper function to get limits based on cooling type
+static CoolingLimits getLimitsForCoolingType(CoolingType coolingType) {
     for (int i = 0; i < sizeof(coolingLimits) / sizeof(CoolingLimits); ++i) {
         if (coolingLimits[i].coolingType == coolingType) {
             return coolingLimits[i];
         }
     }
-    // Return default limits if not found (error case)
+    // Default case: return 0, 0 limits if cooling type is unknown
     return (CoolingLimits){coolingType, 0, 0};
 }
 
@@ -40,27 +40,32 @@ BreachType classifyTemperatureBreach(CoolingType coolingType, double temperature
     return inferBreach(temperatureInC, limits.lowerLimit, limits.upperLimit);
 }
 
-void checkAndAlert(AlertTarget alertTarget, BatteryCharacter batteryChar, double temperatureInC) {
-    BreachType breachType = classifyTemperatureBreach(batteryChar.coolingType, temperatureInC);
-    switch(alertTarget) {
-        case TO_CONTROLLER:
-            sendToController(breachType);
-            break;
-        case TO_EMAIL:
-            sendToEmail(breachType);
-            break;
-    }
-}
+// Delegate alert sending to specific functions to reduce complexity
+typedef void (*AlertFunction)(BreachType breachType);
 
-void sendToController(BreachType breachType) {
+static void sendToController(BreachType breachType) {
     const unsigned short header = 0xfeed;
     printf("%x : %x\n", header, breachType);
 }
 
-void sendToEmail(BreachType breachType) {
+static void sendToEmail(BreachType breachType) {
     const char* recipient = "a.b@c.com";
     if (breachType != NORMAL) {
         printf("To: %s\n", recipient);
         printf("Hi, the temperature is %s\n", breachType == TOO_LOW ? "too low" : "too high");
     }
+}
+
+static AlertFunction getAlertFunction(AlertTarget alertTarget) {
+    if (alertTarget == TO_CONTROLLER) {
+        return sendToController;
+    } else {
+        return sendToEmail;
+    }
+}
+
+void checkAndAlert(AlertTarget alertTarget, BatteryCharacter batteryChar, double temperatureInC) {
+    BreachType breachType = classifyTemperatureBreach(batteryChar.coolingType, temperatureInC);
+    AlertFunction alertFunc = getAlertFunction(alertTarget);
+    alertFunc(breachType);
 }
